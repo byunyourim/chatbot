@@ -1,15 +1,35 @@
 import json
 import os
 import chromadb
-from chromadb.utils.embedding_functions import GoogleGenerativeAiEmbeddingFunction
+from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
+from google import genai
 from dotenv import load_dotenv
+
+# pip install chromadb google-genai python-dotenv
 
 load_dotenv()
 
-# ── Gemini 임베딩 모델 (무료, 다운로드 불필요) ────────────────────────
-embedding_fn = GoogleGenerativeAiEmbeddingFunction(
+
+class GeminiEmbeddingFunction(EmbeddingFunction[Documents]):
+    def __init__(self, api_key: str, model_name: str = "gemini-embedding-001"):
+        self._client = genai.Client(api_key=api_key)
+        self._model = model_name
+
+    def __call__(self, input: Documents) -> Embeddings:
+        result = self._client.models.embed_content(
+            model=self._model,
+            contents=list(input),
+        )
+        return [list(e.values) for e in result.embeddings]
+
+    @staticmethod
+    def name() -> str:
+        return "gemini_embedding"
+
+
+embedding_fn = GeminiEmbeddingFunction(
     api_key=os.getenv('GEMINI_API_KEY'),
-    model_name="models/gemini-embedding-001"
+    model_name="gemini-embedding-001",
 )
 
 # ── faq_data.json 로드 ────────────────────────────────────────────────
