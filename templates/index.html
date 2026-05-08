@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>AI 챗봇</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-8px); }
+        }
+        .dot { animation: bounce 1.4s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="flex flex-col w-full max-w-2xl h-screen bg-white shadow-xl rounded-2xl overflow-hidden">
+
+        <!-- 헤더 -->
+        <div class="bg-blue-600 text-white p-4 flex items-center gap-3">
+            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">🤖</div>
+            <div>
+                <h1 class="font-bold text-lg">WONI</h1>
+                <p class="text-sm text-blue-200">온라인 · 24시간 응답</p>
+            </div>
+        </div>
+
+        <!-- 메시지 영역 -->
+        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"></div>
+
+        <!-- 입력창 -->
+        <div class="p-4 bg-white border-t border-gray-100 flex gap-2">
+            <input id="user-input" type="text"
+                class="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="메시지를 입력하세요...">
+            <button onclick="sendMessage()"
+                class="bg-blue-500 text-white rounded-full px-5 py-2 text-sm font-medium hover:bg-blue-600">전송</button>
+
+            <button onclick="resetChat()"
+                class="bg-gray-400 text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-gray-500">초기화</button>                
+        </div>
+    </div>
+
+    <script>
+        // ── Session 5 : 말풍선 추가 함수 ──────────────────────────
+        function addMessage(text, isUser) {
+            const chatBox = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+            const bubble = document.createElement('div');
+            bubble.className = isUser
+                ? 'bg-blue-500 text-white px-4 py-2 rounded-2xl text-sm'
+                : 'bg-white text-gray-800 px-4 py-2 rounded-2xl text-sm shadow-sm border border-gray-100';
+            bubble.textContent = text;
+            div.appendChild(bubble);
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // ── Session 5 : 로딩 애니메이션 함수 ─────────────────────
+        function addLoadingBubble() {
+            const chatBox = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'flex justify-start';
+            div.innerHTML = `<div class="flex gap-1 p-3">
+                <div class="dot w-2 h-2 bg-gray-400 rounded-full"></div>
+                <div class="dot w-2 h-2 bg-gray-400 rounded-full"></div>
+                <div class="dot w-2 h-2 bg-gray-400 rounded-full"></div>
+            </div>`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return div;
+        }
+
+        // ── Session 6 STEP 2 : Fetch API — 서버 POST 요청 ────────
+        // ── Session 6 STEP 4 : 에러 처리 — try-catch ─────────────
+        async function fetchAI(message) {
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
+                const data = await response.json();
+                return data.reply;
+            } catch (error) {
+                console.error('오류:', error);
+                return '서버 연결 오류. 잠시 후 다시 시도해주세요.';
+            }
+        }
+
+        // ── Session 6 STEP 1 : sendMessage() 함수 ────────────────
+        // ── Session 6 STEP 3 : 로딩 애니메이션 추가 ──────────────
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
+            addMessage(message, true);   // 사용자 말풍선 추가
+            input.value = '';
+            const loadingDiv = addLoadingBubble();
+            const reply = await fetchAI(message);
+            loadingDiv.remove();
+            addMessage(reply, false);   // AI 말풍선 추가
+        }
+
+        // ── Session 6 STEP 5 : Enter 키 이벤트 연결 ──────────────
+        document.getElementById('user-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // ── index.html <script> 안에 함수 추가 ────────────────
+        async function resetChat() {
+            await fetch('/reset');
+            document.getElementById('chat-box').innerHTML = '';
+            addMessage('새로운 대화를 시작합니다.', false);
+        }        
+    </script>
+</body>
+
+</html>
